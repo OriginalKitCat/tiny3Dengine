@@ -3,13 +3,16 @@
 #define outputHeight 100
 #define outputWidth 100
 
-unsigned char img[outputHeight * outputWidth * 3];
+typedef struct {
+    unsigned char r, g, b;
+} Color;
 
-void changePixel(int x, int y, int r, int g, int b) {
-    int i = 3 * (y * outputHeight + x);
-    img[i] = r;
-    img[i + 1] = g;
-    img[i + 2] = b;
+Color img[outputHeight * outputWidth];
+
+// unsigned char img[outputHeight * outputWidth * 3];
+
+void changePixel(int x, int y, Color c) {
+    img[y * outputWidth + x] = c;
 }
 
 void drawBresenhamLine(int x0, int y0, int x1, int y1) { // Took me some youtube tutorials to figure out
@@ -20,7 +23,7 @@ void drawBresenhamLine(int x0, int y0, int x1, int y1) { // Took me some youtube
         int y = y0;
         int p = 2*dy - dx;
         for (int i = 0; i <= dx; i++) {
-            changePixel(x0 + i, y, 255, 255, 255);
+            changePixel(x0 + i, y, {255, 255, 255});
             if (p >= 0) {
                 y += 1;
                 p = p - 2*dx;
@@ -30,8 +33,9 @@ void drawBresenhamLine(int x0, int y0, int x1, int y1) { // Took me some youtube
     }
 } 
 
+
 void setup(void) {
-    for (int i = 0; i < outputWidth * outputWidth * 3; i++) img[i] = 0;
+    for (int i = 0; i < outputWidth * outputWidth; i++) img[i] = (Color){0, 0, 0};
     drawBresenhamLine(1, 1, 90, 12);
 }
 
@@ -43,4 +47,5 @@ int main(void) {
     fwrite(img, 1, outputWidth * outputHeight * 3, f);
     fclose(f);
     return 0;
+
 }
