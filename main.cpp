@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <SDL2/SDL.h>
 
 #define outputHeight 100
 #define outputWidth 100
+#define SCALE 6
 
 typedef struct {
     unsigned char r, g, b;
@@ -18,14 +20,14 @@ typedef struct
 
 typedef struct
 {
-    unsigned int x, y, z;
-} Ponit3D;
+    float x, y, z;
+} Point3D;
 
 
 // unsigned char img[outputHeight * outputWidth * 3];
 
-void clearScreen() {
-    for (int i = 0; i < outputWidth * outputWidth; i++) img[i] = (Color){0, 0, 0};
+void clearScreen(void) {
+    for (int i = 0; i < outputWidth * outputHeight; i++) img[i] = (Color){0, 0, 0};
 }
 
 void changePixel(int x, int y, Color c) {
@@ -61,19 +63,60 @@ Point2D OnScreen(Point2D p) {
     };
 }
 
+Point2D Project3D(Point3D p) {
+    return {
+        p.x / p.z,
+        p.y / p.z
+    };
+}
+
 void setup(void) {
     clearScreen();
     // drawBresenhamLine(1, 1, 90, 12);
-    changePixelPoint2D(OnScreen({0, 0.5}), {255, 255, 255});
+    changePixelPoint2D(OnScreen(Project3D({0, 0.5, 3})), {255, 255, 255});
 }
 
-int main(void) {
-    setup();
+void update(float t) {
+    clearScreen();
+    float dt = 0;
+    Point3D p = {0, 0.5, 1 + t};
+    changePixelPoint2D(OnScreen(Project3D(p)), (Color){100, 255, 50});
+}
 
-    FILE *f = fopen("out.ppm", "wb");
-    fprintf(f, "P6\n%d %d\n255\n", outputWidth, outputHeight);
-    fwrite(img, 1, outputWidth * outputHeight * 3, f);
-    fclose(f);
+
+
+int main(int argc, char **argv) {
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Window *win = SDL_CreateWindow("renderer",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        outputWidth * SCALE, outputHeight * SCALE, 0);
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_Texture *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24,
+        SDL_TEXTUREACCESS_STREAMING, outputWidth, outputHeight);
+
+    int running = 1;
+    Uint64 start = SDL_GetPerformanceCounter();
+    Uint64 freq = SDL_GetPerformanceFrequency();
+
+    while (running) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) running = 0;
+        }
+
+        float t = (float)(SDL_GetPerformanceCounter() - start) / freq;
+        update(t);
+
+        SDL_UpdateTexture(tex, NULL, img, outputWidth * sizeof(Color));
+        SDL_RenderClear(ren);
+        SDL_RenderCopy(ren, tex, NULL, NULL);  // stretches 100x100 to the window
+        SDL_RenderPresent(ren);                // vsync paces this to the monitor rate
+    }
+
+    SDL_DestroyTexture(tex);
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    SDL_Quit();
     return 0;
-
 }
